@@ -1,54 +1,50 @@
 "use client";
 
-import Script from "next/script";
-import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import Script from 'next/script';
+import { useEffect } from 'react';
+import { initGA } from '@/lib/analytics';
 
 interface GoogleAnalyticsProps {
   measurementId?: string;
 }
 
-// TypeScript: declare gtag on window
-declare global {
-  interface Window {
-    gtag?: (...args: any[]) => void;
-  }
-}
-
 export default function GoogleAnalytics({ measurementId }: GoogleAnalyticsProps) {
   const GA_MEASUREMENT_ID = measurementId || process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
-    if (!GA_MEASUREMENT_ID || process.env.NODE_ENV !== "production") return;
-    if (!window.gtag) return;
+    // Initialize GA after scripts load
+    if (GA_MEASUREMENT_ID) {
+      initGA();
+    }
+  }, [GA_MEASUREMENT_ID]);
 
-    // Track page views on route change
-    const url = pathname + (searchParams ? `?${searchParams.toString()}` : "");
-    window.gtag("config", GA_MEASUREMENT_ID, {
-      page_path: url,
-    });
-  }, [pathname, searchParams, GA_MEASUREMENT_ID]);
-
-  if (!GA_MEASUREMENT_ID) return null;
+  if (!GA_MEASUREMENT_ID) {
+    // Don't render anything if no measurement ID is provided
+    return null;
+  }
 
   return (
     <>
-      {/* Load GA script */}
+      {/* Load Google Analytics script */}
       <Script
         strategy="afterInteractive"
         src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
       />
-      {/* Initialize GA */}
+      
+      {/* Initialize Google Analytics */}
       <Script
-        id="google-analytics-init"
+        id="google-analytics"
         strategy="afterInteractive"
         dangerouslySetInnerHTML={{
           __html: `
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
+            gtag('config', '${GA_MEASUREMENT_ID}', {
+              page_title: 'Excel to PDF Converter',
+              debug_mode: ${process.env.NODE_ENV === 'development'},
+              send_page_view: true
+            });
           `,
         }}
       />
