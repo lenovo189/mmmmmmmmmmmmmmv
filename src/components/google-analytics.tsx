@@ -1,8 +1,8 @@
 "use client";
 
-import Script from 'next/script';
-import { useEffect } from 'react';
-import { initGA } from '@/lib/analytics';
+import Script from "next/script";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 
 interface GoogleAnalyticsProps {
   measurementId?: string;
@@ -10,28 +10,28 @@ interface GoogleAnalyticsProps {
 
 export default function GoogleAnalytics({ measurementId }: GoogleAnalyticsProps) {
   const GA_MEASUREMENT_ID = measurementId || process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
-    // Initialize GA after scripts load
-    if (GA_MEASUREMENT_ID) {
-      initGA();
-    }
-  }, [GA_MEASUREMENT_ID]);
+    if (!GA_MEASUREMENT_ID || process.env.NODE_ENV !== "production") return;
 
-  if (!GA_MEASUREMENT_ID) {
-    // Don't render anything if no measurement ID is provided
-    return null;
-  }
+    // Track page views on route change
+    const url = pathname + (searchParams ? "?" + searchParams.toString() : "");
+    window.gtag("config", GA_MEASUREMENT_ID, {
+      page_path: url,
+    });
+  }, [pathname, searchParams, GA_MEASUREMENT_ID]);
+
+  if (!GA_MEASUREMENT_ID) return null;
 
   return (
     <>
-      {/* Load Google Analytics script */}
+      {/* Load GA script */}
       <Script
         strategy="afterInteractive"
         src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
       />
-      
-      {/* Initialize Google Analytics */}
       <Script
         id="google-analytics"
         strategy="afterInteractive"
@@ -40,11 +40,7 @@ export default function GoogleAnalytics({ measurementId }: GoogleAnalyticsProps)
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-            gtag('config', '${GA_MEASUREMENT_ID}', {
-              page_title: 'Excel to PDF Converter',
-              debug_mode: ${process.env.NODE_ENV === 'development'},
-              send_page_view: true
-            });
+            gtag('config', '${GA_MEASUREMENT_ID}', { send_page_view: true });
           `,
         }}
       />
