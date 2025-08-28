@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
   BarChart,
   Bar,
@@ -317,16 +317,35 @@ interface ChartsContainerProps {
 
 export function ChartsContainer({ chartsData, className = '', onChartsRender }: ChartsContainerProps) {
   const chartRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [chartsRendered, setChartsRendered] = useState<number>(0);
 
   useEffect(() => {
-    if (onChartsRender && chartRefs.current.length === chartsData.length) {
-      // Wait for all charts to render
-      setTimeout(() => onChartsRender(chartRefs.current), 1000);
+    // Reset charts rendered count when chartsData changes
+    setChartsRendered(0);
+    chartRefs.current = new Array(chartsData.length).fill(null);
+  }, [chartsData]);
+
+  useEffect(() => {
+    // Only call onChartsRender when all charts have valid refs
+    if (onChartsRender && chartsRendered === chartsData.length && chartsData.length > 0) {
+      const validRefs = chartRefs.current.filter(ref => ref !== null);
+      if (validRefs.length === chartsData.length) {
+        console.log(`All ${chartsData.length} charts rendered, notifying parent component`);
+        // Add extra delay to ensure chart DOM is fully rendered
+        setTimeout(() => onChartsRender(chartRefs.current), 1500);
+      }
     }
-  }, [chartsData, onChartsRender]);
+  }, [chartsRendered, chartsData, onChartsRender]);
 
   const handleChartRender = (index: number) => (chartRef: HTMLDivElement | null) => {
     chartRefs.current[index] = chartRef;
+    if (chartRef) {
+      setChartsRendered(prev => {
+        const newCount = prev + 1;
+        console.log(`Chart ${index} rendered (${newCount}/${chartsData.length})`);
+        return newCount;
+      });
+    }
   };
 
   if (!chartsData || chartsData.length === 0) {

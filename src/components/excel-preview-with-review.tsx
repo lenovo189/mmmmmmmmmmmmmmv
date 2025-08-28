@@ -52,6 +52,7 @@ export default function ExcelPreviewWithReview({ file }: ExcelPreviewWithReviewP
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const [chartRefs, setChartRefs] = useState<(HTMLDivElement | null)[]>([]);
+  const [chartsReady, setChartsReady] = useState(false);
   
   // Analytics timing state
   const [aiProcessingStartTime, setAiProcessingStartTime] = useState<number | null>(null);
@@ -321,6 +322,9 @@ export default function ExcelPreviewWithReview({ file }: ExcelPreviewWithReviewP
           );
           setChartsData(generatedCharts);
           
+          // Reset charts ready state since we have new charts
+          setChartsReady(false);
+          
           // Track chart generation completion
           const successfulChartTypes = generatedCharts.map((c: ProcessedChartData) => c.config.type);
           const allRequestedTypes = validRecommendations.map((c: ChartConfig) => c.type);
@@ -507,7 +511,17 @@ export default function ExcelPreviewWithReview({ file }: ExcelPreviewWithReviewP
 
   // Handle chart rendering for PDF export
   const handleChartsRender = (refs: (HTMLDivElement | null)[]) => {
+    console.log(`Chart refs updated: ${refs.length} refs received, ${refs.filter(ref => ref !== null).length} non-null`);
     setChartRefs(refs);
+    
+    // Mark charts as ready when we have the same number of valid refs as chart data
+    const validRefs = refs.filter(ref => ref !== null);
+    const isReady = validRefs.length === chartsData.length && chartsData.length > 0;
+    setChartsReady(isReady);
+    
+    if (isReady) {
+      console.log('✅ Charts are ready for PDF export');
+    }
   };
 
   // Test function to demonstrate dynamic chart functionality
@@ -658,8 +672,14 @@ export default function ExcelPreviewWithReview({ file }: ExcelPreviewWithReviewP
         }
         
         try {
-          // Wait longer for charts to be fully rendered
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          // If charts are not ready, wait a bit longer
+          if (!chartsReady) {
+            console.log('Charts not ready, waiting longer for chart rendering...');
+            await new Promise(resolve => setTimeout(resolve, 3000));
+          } else {
+            // Charts should already be ready, add small delay for safety
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
           
           const chartImages = await captureChartsWithRetry(chartRefs, chartsData, 5);
           
@@ -978,8 +998,12 @@ export default function ExcelPreviewWithReview({ file }: ExcelPreviewWithReviewP
               <Download className="h-4 w-4 mr-2" />
               Export PDF Report
               {chartsData.length > 0 && (
-                <span className="ml-2 px-2 py-1 bg-blue-500 text-xs rounded">
-                  +{chartsData.length} chart{chartsData.length !== 1 ? 's' : ''}
+                <span className={`ml-2 px-2 py-1 text-xs rounded ${
+                  chartsReady 
+                    ? 'bg-green-500 text-white' 
+                    : 'bg-orange-500 text-white animate-pulse'
+                }`}>
+                  {chartsReady ? '✓' : '⏳'} {chartsData.length} chart{chartsData.length !== 1 ? 's' : ''}
                 </span>
               )}
             </button>
@@ -1044,10 +1068,10 @@ export default function ExcelPreviewWithReview({ file }: ExcelPreviewWithReviewP
           {/* Debug info for chart capture */}
           <div className="mt-4 p-3 bg-blue-100 rounded border text-sm text-blue-800">
             <strong>Chart Status:</strong> {chartsData.length} chart(s) generated • 
-            {chartRefs.length} chart reference(s) ready for PDF export
-            {chartRefs.length === chartsData.length && chartsData.length > 0 && (
-              <span className="text-green-700 font-medium"> ✓ Ready for PDF export with charts</span>
-            )}
+            {chartRefs.length} chart reference(s) ready for PDF export • 
+            <span className={chartsReady ? "text-green-700 font-medium" : "text-orange-700"}>
+              {chartsReady ? '✓ Charts ready for PDF export' : '⏳ Charts still loading...'}
+            </span>
           </div>
         </div>
       )}
