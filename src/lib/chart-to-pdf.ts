@@ -1,5 +1,6 @@
 import html2canvas from 'html2canvas';
 import { ProcessedChartData } from './chart-utils';
+import { PDFTemplate } from '@/components/template-selection-dialog';
 
 export interface ChartImageData {
   dataURL: string;
@@ -18,6 +19,8 @@ export async function chartsToImages(
   chartsData: ProcessedChartData[]
 ): Promise<ChartImageData[]> {
   const chartImages: ChartImageData[] = [];
+
+  console.log(`Starting chartsToImages with ${chartRefs.length} refs and ${chartsData.length} charts`);
 
   for (let i = 0; i < chartRefs.length; i++) {
     const chartRef = chartRefs[i];
@@ -39,13 +42,22 @@ export async function chartsToImages(
         continue;
       }
 
-      console.log(`Chart ${i}: Attempting to capture chart '${chartData.config.title}'`);
+      // Check if the chart container is visible and has dimensions
+      const containerRect = chartContainer.getBoundingClientRect();
+      if (containerRect.width === 0 || containerRect.height === 0) {
+        console.warn(`Chart ${i}: Chart container has zero dimensions`, containerRect);
+        continue;
+      }
+
+      console.log(`Chart ${i}: Attempting to capture chart '${chartData.config.title}' with dimensions ${containerRect.width}x${containerRect.height}`);
 
       // Generate canvas from the chart element
       const canvas = await html2canvas(chartContainer as HTMLElement, {
         logging: false,
         useCORS: true,
         allowTaint: true,
+        backgroundColor: undefined, // Use transparent background
+        scale: 2, // Higher quality capture
       });
 
       const dataURL = canvas.toDataURL('image/png', 1.0);
@@ -66,9 +78,6 @@ export async function chartsToImages(
       });
 
       console.log(`Chart ${i}: Successfully captured (${canvas.width}x${canvas.height})`);
-
-      // Small delay between captures to avoid issues
-      await new Promise(resolve => setTimeout(resolve, 200));
     } catch (error) {
       console.error(`Chart ${i}: Error capturing chart:`, error);
       // Continue with other charts even if one fails
@@ -82,8 +91,13 @@ export async function chartsToImages(
 /**
  * Convert chart images to pdfMake format
  */
-export function chartImagesToPdfMake(chartImages: ChartImageData[]) {
+export function chartImagesToPdfMake(chartImages: ChartImageData[], template?: PDFTemplate) {
   const pdfContent: any[] = [];
+  
+  // Use template styles if provided, otherwise use defaults
+  const chartTitleColor = template?.styles?.chartTitle?.color || '#2563eb';
+  const chartTitleFontSize = template?.styles?.chartTitle?.fontSize || 16;
+  const chartDescriptionColor = template?.colorScheme?.secondary || '#6b7280';
 
   chartImages.forEach((chart, index) => {
     // Add page break before each chart except the first
@@ -143,7 +157,7 @@ export async function captureChartsWithRetry(
   while (attempt < maxRetries) {
     try {
       // Wait for charts to be fully rendered
-      const waitTime = 1500 + (attempt * 500);
+      const waitTime = 2000 + (attempt * 1000); // Increase wait time with each attempt
       console.log(`Attempt ${attempt + 1}: Waiting ${waitTime}ms for charts to render`);
       await new Promise(resolve => setTimeout(resolve, waitTime));
       
@@ -162,19 +176,20 @@ export async function captureChartsWithRetry(
       console.warn(`Chart capture attempt ${attempt} failed:`, error);
       
       if (attempt < maxRetries) {
-        console.log(`Retrying chart capture...`);
+        console.log(`Retrying chart capture... (attempt ${attempt + 1}/${maxRetries})`);
       }
     }
   }
 
   console.error('Failed to capture charts after all retries:', lastError);
+  // Even if we failed to capture all charts, return any that were captured
   return [];
 }
 
 /**
  * Prepare chart section for PDF with proper formatting
  */
-export function createChartsPdfSection(chartImages: ChartImageData[]) {
+export function createChartsPdfSection(chartImages: ChartImageData[], template?: PDFTemplate) {
   if (chartImages.length === 0) {
     return [];
   }
@@ -186,7 +201,7 @@ export function createChartsPdfSection(chartImages: ChartImageData[]) {
       style: 'sectionIntro',
       margin: [0, 0, 0, 20]
     },
-    ...chartImagesToPdfMake(chartImages)
+    ...chartImagesToPdfMake(chartImages, template)
   ];
 
   return content;
@@ -195,28 +210,104 @@ export function createChartsPdfSection(chartImages: ChartImageData[]) {
 /**
  * Add chart-specific styles to PDF document definition
  */
-export function getChartPdfStyles() {
+export function getChartPdfStyles(template?: PDFTemplate) {
+  // Use template styles if provided, otherwise use defaults
+  const chartTitleColor = template?.styles?.chartTitle?.color || '#2563eb';
+  const chartTitleFontSize = template?.styles?.chartTitle?.fontSize || 16;
+  const chartDescriptionColor = template?.colorScheme?.secondary || '#6b7280';
+  const chartMetaColor = template?.colorScheme?.secondary || '#9ca3af';
+
   return {
     chartTitle: {
-      fontSize: 16,
+      fontSize: chartTitleFontSize,
       bold: true,
-      color: '#2563eb',
+      color: chartTitleColor,
       alignment: 'center' as const,
     },
     chartDescription: {
       fontSize: 12,
       italics: true,
-      color: '#6b7280',
+      color: chartDescriptionColor,
       alignment: 'center' as const,
     },
     chartMeta: {
       fontSize: 10,
-      color: '#9ca3af',
+      color: chartMetaColor,
     },
     sectionIntro: {
       fontSize: 11,
-      color: '#4b5563',
+      color: chartDescriptionColor,
       lineHeight: 1.4,
+    },
+  };
+}
+
+/**
+ * Get base PDF styles with template support
+ */
+export function getBasePdfStyles(template?: PDFTemplate) {
+  // Use template styles if provided, otherwise use defaults
+  const titleColor = template?.styles?.title?.color || '#1e40af';
+  const titleFontSize = template?.styles?.title?.fontSize || 22;
+  const sectionHeaderColor = template?.styles?.sectionHeader?.color || '#2563eb';
+  const sectionHeaderFontSize = template?.styles?.sectionHeader?.fontSize || 16;
+
+  return {
+    title: { 
+      fontSize: titleFontSize, 
+      bold: true, 
+      margin: [0, 0, 0, 10], 
+      alignment: "center", 
+      color: titleColor 
+    },
+    subtitle: { 
+      fontSize: 16, 
+      bold: true, 
+      margin: [0, 0, 0, 5], 
+      alignment: "center" 
+    },
+    date: { 
+      fontSize: 12, 
+      italics: true, 
+      margin: [0, 0, 0, 30], 
+      alignment: "center", 
+      color: "#6b7280" 
+    },
+    sectionHeader: { 
+      fontSize: sectionHeaderFontSize, 
+      bold: true, 
+      margin: [0, 25, 0, 10], 
+      color: sectionHeaderColor 
+    },
+    h1: { 
+      fontSize: 18, 
+      bold: true, 
+      margin: [0, 20, 0, 12], 
+      color: "#1f2937" 
+    },
+    h2: { 
+      fontSize: 16, 
+      bold: true, 
+      margin: [0, 18, 0, 10], 
+      color: "#374151" 
+    },
+    h3: { 
+      fontSize: 14, 
+      bold: true, 
+      margin: [0, 15, 0, 8], 
+      color: "#4b5563" 
+    },
+    code: { 
+      font: "Courier", 
+      fontSize: 10, 
+      background: "#f3f4f6", 
+      margin: [0, 8, 0, 8] 
+    },
+    warningText: { 
+      fontSize: 12, 
+      italics: true, 
+      color: "#f59e0b", 
+      margin: [0, 10, 0, 10] 
     },
   };
 }

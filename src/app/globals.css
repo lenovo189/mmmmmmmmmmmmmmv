@@ -1,7 +1,23 @@
+@import url('https://fonts.googleapis.com/css2?family=Pacifico&display=swap');
+
 @import "tailwindcss";
 @import "tw-animate-css";
 
 @tailwind utilities;
+
+/* Pacifico font class using next/font variable */
+.pacifico-regular {
+  font-family: var(--font-pacifico), cursive;
+  font-weight: 400;
+  font-style: normal;
+}
+
+/* Lobster font class using next/font variable */
+.lobster-regular {
+  font-family: var(--font-lobster), sans-serif;
+  font-weight: 400;
+  font-style: normal;
+}
 
 @custom-variant dark (&:is(.dark *));
 

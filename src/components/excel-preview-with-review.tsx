@@ -16,7 +16,8 @@ import MarkdownRenderer from "@/components/markdown-renderer";
 import { markdownToPdfMake } from "@/lib/markdown-utils";
 import { ChartsContainer } from "@/components/chart-renderer";
 import { transformDataForChart, ProcessedChartData, ChartConfig } from "@/lib/chart-utils";
-import { captureChartsWithRetry, createChartsPdfSection, getChartPdfStyles } from "@/lib/chart-to-pdf";
+import { captureChartsWithRetry, createChartsPdfSection, getChartPdfStyles, getBasePdfStyles } from "@/lib/chart-to-pdf";
+import { TemplateSelectionDialog, PDFTemplate, pdfTemplates } from "@/components/template-selection-dialog";
 import {
   trackAIProcessingStart,
   trackAIProcessingComplete,
@@ -53,6 +54,8 @@ export default function ExcelPreviewWithReview({ file }: ExcelPreviewWithReviewP
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const [chartRefs, setChartRefs] = useState<(HTMLDivElement | null)[]>([]);
   const [chartsReady, setChartsReady] = useState(false);
+  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<PDFTemplate | null>(null);
   
   // Analytics timing state
   const [aiProcessingStartTime, setAiProcessingStartTime] = useState<number | null>(null);
@@ -637,7 +640,23 @@ export default function ExcelPreviewWithReview({ file }: ExcelPreviewWithReviewP
     }
   };
 
-  const exportToPDFWithReview = async () => {
+  const handleExportPDF = async () => {
+    // Open template selection dialog instead of directly exporting
+    setIsTemplateDialogOpen(true);
+  };
+
+  const handleDirectExport = async () => {
+    // Direct export without template selection (backward compatibility)
+    await generatePDFWithTemplate(undefined);
+  };
+
+  const handleTemplateSelect = async (template: PDFTemplate) => {
+    setSelectedTemplate(template);
+    setIsTemplateDialogOpen(false);
+    await generatePDFWithTemplate(template);
+  };
+
+  const generatePDFWithTemplate = async (template?: PDFTemplate) => {
     if (rows.length === 0) return;
 
     const pdfStartTime = Date.now();
@@ -666,26 +685,65 @@ export default function ExcelPreviewWithReview({ file }: ExcelPreviewWithReviewP
     try {
       // Capture charts if they exist
       let chartContent: any[] = [];
-      if (chartsData.length > 0 && chartRefs.length > 0) {
+      if (chartsData.length > 0) {
         if (button) {
           button.innerHTML = '<svg class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Capturing charts...';
         }
         
         try {
+          console.log(`Attempting to capture ${chartsData.length} charts for PDF export`);
+          
           // If charts are not ready, wait a bit longer
           if (!chartsReady) {
             console.log('Charts not ready, waiting longer for chart rendering...');
-            await new Promise(resolve => setTimeout(resolve, 3000));
-          } else {
-            // Charts should already be ready, add small delay for safety
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // Wait for charts to be ready with a timeout
+            const waitForCharts = new Promise<void>((resolve, reject) => {
+              let attempts = 0;
+              const maxAttempts = 30; // 30 seconds max wait
+              const checkInterval = setInterval(() => {
+                attempts++;
+                console.log(`Waiting for charts... attempt ${attempts}/${maxAttempts}`);
+                if (chartsReady || attempts >= maxAttempts) {
+                  clearInterval(checkInterval);
+                  if (chartsReady) {
+                    resolve();
+                  } else {
+                    reject(new Error('Charts did not become ready in time'));
+                  }
+                }
+              }, 1000);
+            });
+            
+            try {
+              await waitForCharts;
+              console.log('Charts are now ready for capture');
+            } catch (waitError) {
+              console.warn('Timeout waiting for charts to be ready:', waitError);
+            }
           }
           
+          // Add a longer delay to ensure charts are fully rendered
+          console.log('Adding additional delay to ensure charts are fully rendered...');
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          
+          // Log current chart refs status
+          console.log(`Current chartRefs status: ${chartRefs.length} refs, ${chartRefs.filter(ref => ref !== null).length} non-null`);
+          
+          // Validate that we have chart refs
+          const validChartRefs = chartRefs.filter(ref => ref !== null);
+          if (validChartRefs.length === 0) {
+            console.warn('No valid chart references found for capture');
+          } else {
+            console.log(`Found ${validChartRefs.length} valid chart references for capture`);
+          }
+          
+          // Use the current chartRefs for capturing
+          console.log('Starting chart capture process...');
           const chartImages = await captureChartsWithRetry(chartRefs, chartsData, 5);
           
           if (chartImages.length > 0) {
-            chartContent = createChartsPdfSection(chartImages);
             console.log(`Successfully captured ${chartImages.length} charts for PDF`);
+            chartContent = createChartsPdfSection(chartImages, template); // Pass template to createChartsPdfSection
           } else {
             console.warn('No charts were captured, PDF will be generated without charts');
             // Add a note about charts in the PDF
@@ -702,6 +760,8 @@ export default function ExcelPreviewWithReview({ file }: ExcelPreviewWithReviewP
             { text: 'Charts were generated but could not be captured for this PDF due to technical limitations. Please view charts in the web interface.', style: 'warningText', margin: [0, 0, 0, 20] }
           ];
         }
+      } else {
+        console.log('No charts to capture for PDF export');
       }
 
       if (button) {
@@ -720,12 +780,13 @@ export default function ExcelPreviewWithReview({ file }: ExcelPreviewWithReviewP
         })
       );
 
+      // Use the template when generating the PDF
       const docDefinition: any = {
         content: [
           { text: "AI-Powered Data Analysis Report", style: "title" },
           { text: `File: ${file.name}`, style: "subtitle" },
           { text: `Generated on: ${new Date().toLocaleDateString()}`, style: "date" },
-          
+        
           // Executive Summary Section
           ...(aiSummary ? [
             { text: "Executive Summary", style: "sectionHeader", pageBreak: "before" },
@@ -763,16 +824,8 @@ export default function ExcelPreviewWithReview({ file }: ExcelPreviewWithReviewP
           },
         ],
         styles: {
-          title: { fontSize: 22, bold: true, margin: [0, 0, 0, 10], alignment: "center", color: "#1e40af" },
-          subtitle: { fontSize: 16, bold: true, margin: [0, 0, 0, 5], alignment: "center" },
-          date: { fontSize: 12, italics: true, margin: [0, 0, 0, 30], alignment: "center", color: "#6b7280" },
-          sectionHeader: { fontSize: 16, bold: true, margin: [0, 25, 0, 10], color: "#2563eb" },
-          h1: { fontSize: 18, bold: true, margin: [0, 20, 0, 12], color: "#1f2937" },
-          h2: { fontSize: 16, bold: true, margin: [0, 18, 0, 10], color: "#374151" },
-          h3: { fontSize: 14, bold: true, margin: [0, 15, 0, 8], color: "#4b5563" },
-          code: { font: "Courier", fontSize: 10, background: "#f3f4f6", margin: [0, 8, 0, 8] },
-          warningText: { fontSize: 12, italics: true, color: "#f59e0b", margin: [0, 10, 0, 10] },
-          ...getChartPdfStyles(), // Add chart-specific styles
+          ...getBasePdfStyles(template), // Use template styles
+          ...getChartPdfStyles(template), // Add chart-specific styles with template
         },
         defaultStyle: { fontSize: 10 },
         pageOrientation: "landscape",
@@ -986,11 +1039,11 @@ export default function ExcelPreviewWithReview({ file }: ExcelPreviewWithReviewP
           
           <div className="flex flex-wrap gap-3">
             <button
-              onClick={exportToPDFWithReview}
+              onClick={handleDirectExport}
               data-pdf-export
               disabled={stats ? !stats.withinLimit : false}
               className={`inline-flex items-center px-4 py-2 rounded-lg transition-colors font-medium ${
-                stats && !stats.withinLimit
+                stats ? !stats.withinLimit : false
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-blue-600 text-white hover:bg-blue-700'
               }`}
@@ -1008,6 +1061,29 @@ export default function ExcelPreviewWithReview({ file }: ExcelPreviewWithReviewP
               )}
             </button>
             
+            {/* Template selection button */}
+            <button
+              onClick={handleExportPDF}
+              disabled={stats ? !stats.withinLimit : false}
+              className={`inline-flex items-center px-4 py-2 border rounded-lg transition-colors font-medium ${
+                stats ? !stats.withinLimit : false
+                  ? 'border-gray-300 text-gray-500 cursor-not-allowed opacity-50'
+                  : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export with Template
+              {chartsData.length > 0 && (
+                <span className={`ml-2 px-2 py-1 text-xs rounded ${
+                  chartsReady 
+                    ? 'bg-green-500 text-white' 
+                    : 'bg-orange-500 text-white animate-pulse'
+                }`}>
+                  {chartsReady ? '✓' : '⏳'} {chartsData.length} chart{chartsData.length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </button>
+
             <button
               onClick={generateAIReview}
               disabled={isAnalyzing || (stats ? !stats.withinLimit : false)}
@@ -1060,9 +1136,10 @@ export default function ExcelPreviewWithReview({ file }: ExcelPreviewWithReviewP
       {/* Charts Section - show after analysis if charts are recommended */}
       {analysisComplete && chartsData.length > 0 && (
         <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-6">
-          <ChartsContainer 
-            chartsData={chartsData} 
+          <ChartsContainer
+            chartsData={chartsData}
             onChartsRender={handleChartsRender}
+            template={selectedTemplate || undefined} // Pass selected template or undefined to ChartsContainer
           />
           
           {/* Debug info for chart capture */}
@@ -1230,6 +1307,14 @@ export default function ExcelPreviewWithReview({ file }: ExcelPreviewWithReviewP
           </div>
         </div>
       )}
+
+      <TemplateSelectionDialog
+        open={isTemplateDialogOpen}
+        onOpenChange={setIsTemplateDialogOpen}
+        onSelectTemplate={handleTemplateSelect}
+        selectedTemplateId={selectedTemplate?.id}
+      />
+      
     </div>
   )
 }

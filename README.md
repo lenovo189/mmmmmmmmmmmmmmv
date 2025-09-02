@@ -9,6 +9,8 @@ A Next.js-based application that transforms Excel files into comprehensive PDF r
 - **Excel Preview**: View Excel data with preserved formatting and styling
 - **AI-Powered Analysis**: Comprehensive data analysis using Google Gemini AI
 - **PDF Report Generation**: Create professional PDF reports with AI insights
+- **Template Selection**: Choose from multiple PDF templates with different color schemes
+- **Chart Styling**: Charts are styled according to the selected template
 
 ### AI Analysis Capabilities
 - **Data Understanding**: AI identifies data types, business domains, and relationships
@@ -21,6 +23,8 @@ A Next.js-based application that transforms Excel files into comprehensive PDF r
 ### Export Options
 - **Complete AI Report**: Full PDF with executive summary, analysis, recommendations, and data
 - **Data Only PDF**: Simple PDF export of Excel data without AI analysis
+- **Template-Based Styling**: Select from 5 professional templates with unique color schemes
+- **Chart Customization**: Charts automatically styled to match selected template
 
 ## 🛠️ Technology Stack
 
@@ -95,6 +99,12 @@ npm run lint
 ### 4. Export PDF Reports
 - **Complete AI Report**: Includes all analysis, insights, and data
 - **Data Only**: Simple Excel-to-PDF conversion without AI analysis
+- **Template Selection**: Choose from 5 professional templates with unique color schemes:
+  - **Professional**: Clean and professional look with blue accents
+  - **Modern**: Contemporary design with vibrant colors
+  - **Minimal**: Simple and clean design with grayscale tones
+  - **Corporate**: Business-oriented design with conservative colors
+  - **Vibrant**: Energetic design with bold, bright colors
 
 ## 🔍 AI Analysis Process
 
@@ -118,9 +128,11 @@ src/
 ├── components/
 │   ├── ui/                 # Radix UI components
 │   ├── file-upload.tsx     # File upload component
+│   ├── template-selection-dialog.tsx  # PDF template selection dialog
 │   └── excel-preview-with-review.tsx  # Main Excel preview & AI analysis
 ├── lib/
 │   ├── gemini.ts          # AI analysis functions
+│   ├── chart-to-pdf.ts    # PDF generation with template support
 │   └── utils.ts           # Utility functions
 └── hooks/
     └── use-mobile.ts      # Mobile detection hook
@@ -152,6 +164,7 @@ The main component that handles:
 - Orientation: Landscape for better table display
 - Styling: Professional business report format
 - Sections: Executive summary, analysis, recommendations, data
+- **Templates**: 5 customizable templates with unique color schemes and styling
 
 ## 🚨 Important Notes
 

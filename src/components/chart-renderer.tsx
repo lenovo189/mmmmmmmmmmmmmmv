@@ -23,32 +23,74 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ProcessedChartData } from '@/lib/chart-utils';
+import { PDFTemplate } from '@/components/template-selection-dialog';
 
 interface ChartRendererProps {
   chartData: ProcessedChartData;
   className?: string;
   onChartRender?: (chartRef: HTMLDivElement | null) => void;
+  template?: PDFTemplate; // Add template prop
 }
 
-export default function ChartRenderer({ chartData, className = '', onChartRender }: ChartRendererProps) {
+export default function ChartRenderer({ chartData, className = '', onChartRender, template }: ChartRendererProps) {
   const chartRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (onChartRender && chartRef.current) {
-      // Delay to ensure chart is fully rendered
-      setTimeout(() => onChartRender(chartRef.current), 500);
+    if (onChartRender) {
+      // Use a more reliable timing mechanism
+      const notifyRender = () => {
+        if (chartRef.current) {
+          // Check if the chart is actually rendered and visible
+          const chartContainer = chartRef.current.querySelector('.recharts-wrapper') || 
+                                chartRef.current.querySelector('svg');
+          
+          if (chartContainer) {
+            const rect = chartContainer.getBoundingClientRect();
+            if (rect.width > 0 && rect.height > 0) {
+              console.log(`ChartRenderer: Notifying parent that chart is rendered`, {
+                title: chartData.config.title,
+                dimensions: `${rect.width}x${rect.height}`
+              });
+              onChartRender(chartRef.current);
+              return;
+            }
+          }
+        }
+        
+        // If chart is not ready yet, try again after a delay
+        console.log(`ChartRenderer: Chart not ready yet, retrying in 500ms`);
+        setTimeout(notifyRender, 500);
+      };
+      
+      // Initial notification attempt after a delay
+      const timer = setTimeout(notifyRender, 2000);
+      return () => clearTimeout(timer);
     }
   }, [chartData, onChartRender]);
 
   const { config, data, colors, metadata } = chartData;
 
+  // Use template colors if provided, otherwise use default colors
+  const chartColors = template ? [
+    template.colorScheme.primary,
+    template.colorScheme.secondary,
+    template.colorScheme.accent
+  ] : colors;
+
+  // Use template chart styles if provided
+  const chartStyles = template?.chartStyles || {
+    gridColor: "#e5e7eb",
+    axisColor: "#9ca3af",
+    tooltipBackgroundColor: "#ffffff",
+  };
+
   // Ensure colors are in a safe format for html2canvas
-  const safeColors = colors.map(color => {
+  const safeColors = chartColors.map(color => {
     // Convert any problematic color formats to hex
     if (color.startsWith('hsl') || color.startsWith('oklch') || color.startsWith('lab')) {
       // Fallback to safe hex colors if problematic format detected
       const fallbackColors = ['#e76f51', '#2a9d8f', '#f4a261', '#e9c46a', '#264653'];
-      const index = colors.indexOf(color);
+      const index = chartColors.indexOf(color);
       return fallbackColors[index % fallbackColors.length];
     }
     return color;
@@ -58,7 +100,13 @@ export default function ChartRenderer({ chartData, className = '', onChartRender
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+        <div 
+          className="p-3 border rounded-lg shadow-lg"
+          style={{ 
+            backgroundColor: chartStyles.tooltipBackgroundColor,
+            borderColor: chartStyles.axisColor,
+          }}
+        >
           <p className="font-medium text-gray-900">{label}</p>
           {payload.map((entry: any, index: number) => (
             <p key={index} className="text-sm" style={{ color: entry.color }}>
@@ -87,9 +135,9 @@ export default function ChartRenderer({ chartData, className = '', onChartRender
         return (
           <ResponsiveContainer width="100%" height={400}>
             <BarChart {...commonProps}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="x" />
-              <YAxis />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartStyles.gridColor} />
+              <XAxis dataKey="x" stroke={chartStyles.axisColor} />
+              <YAxis stroke={chartStyles.axisColor} />
               <Tooltip content={<CustomTooltip />} />
               <Legend />
               <Bar dataKey="value" fill={safeColors[0]} />
@@ -101,9 +149,9 @@ export default function ChartRenderer({ chartData, className = '', onChartRender
         return (
           <ResponsiveContainer width="100%" height={400}>
             <LineChart {...commonProps}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="x" />
-              <YAxis />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartStyles.gridColor} />
+              <XAxis dataKey="x" stroke={chartStyles.axisColor} />
+              <YAxis stroke={chartStyles.axisColor} />
               <Tooltip content={<CustomTooltip />} />
               <Legend />
               <Line 
@@ -121,9 +169,9 @@ export default function ChartRenderer({ chartData, className = '', onChartRender
         return (
           <ResponsiveContainer width="100%" height={400}>
             <AreaChart {...commonProps}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="x" />
-              <YAxis />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartStyles.gridColor} />
+              <XAxis dataKey="x" stroke={chartStyles.axisColor} />
+              <YAxis stroke={chartStyles.axisColor} />
               <Tooltip content={<CustomTooltip />} />
               <Legend />
               <Area 
@@ -168,9 +216,9 @@ export default function ChartRenderer({ chartData, className = '', onChartRender
         return (
           <ResponsiveContainer width="100%" height={400}>
             <ComposedChart {...commonProps}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="x" />
-              <YAxis />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartStyles.gridColor} />
+              <XAxis dataKey="x" stroke={chartStyles.axisColor} />
+              <YAxis stroke={chartStyles.axisColor} />
               <Tooltip content={<CustomTooltip />} />
               <Legend />
               <Bar dataKey="value" fill={safeColors[0]} name="Primary" />
@@ -189,9 +237,9 @@ export default function ChartRenderer({ chartData, className = '', onChartRender
         return (
           <ResponsiveContainer width="100%" height={400}>
             <BarChart {...commonProps}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="x" />
-              <YAxis />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartStyles.gridColor} />
+              <XAxis dataKey="x" stroke={chartStyles.axisColor} />
+              <YAxis stroke={chartStyles.axisColor} />
               <Tooltip content={<CustomTooltip />} />
               <Legend />
               <Bar dataKey="value" fill={safeColors[0]} name="Frequency" />
@@ -203,9 +251,9 @@ export default function ChartRenderer({ chartData, className = '', onChartRender
         return (
           <ResponsiveContainer width="100%" height={400}>
             <BarChart {...commonProps}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="x" />
-              <YAxis />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartStyles.gridColor} />
+              <XAxis dataKey="x" stroke={chartStyles.axisColor} />
+              <YAxis stroke={chartStyles.axisColor} />
               <Tooltip content={<CustomTooltip />} />
               <Legend />
               <Bar dataKey="value" fill={safeColors[0]} name="Change" />
@@ -217,9 +265,9 @@ export default function ChartRenderer({ chartData, className = '', onChartRender
         return (
           <ResponsiveContainer width="100%" height={400}>
             <BarChart {...commonProps} layout="horizontal">
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" />
-              <YAxis dataKey="name" type="category" />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartStyles.gridColor} />
+              <XAxis type="number" stroke={chartStyles.axisColor} />
+              <YAxis dataKey="name" type="category" stroke={chartStyles.axisColor} />
               <Tooltip content={<CustomTooltip />} />
               <Legend />
               <Bar dataKey="value" fill={safeColors[0]} />
@@ -256,9 +304,9 @@ export default function ChartRenderer({ chartData, className = '', onChartRender
         return (
           <ResponsiveContainer width="100%" height={400}>
             <ScatterChart {...commonProps}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="x" />
-              <YAxis dataKey="y" />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartStyles.gridColor} />
+              <XAxis dataKey="x" stroke={chartStyles.axisColor} />
+              <YAxis dataKey="y" stroke={chartStyles.axisColor} />
               <Tooltip content={<CustomTooltip />} />
               <Legend />
               <Scatter
@@ -313,38 +361,48 @@ interface ChartsContainerProps {
   chartsData: ProcessedChartData[];
   className?: string;
   onChartsRender?: (chartRefs: (HTMLDivElement | null)[]) => void;
+  template?: PDFTemplate | null; // Update to properly handle null templates
 }
 
-export function ChartsContainer({ chartsData, className = '', onChartsRender }: ChartsContainerProps) {
+export function ChartsContainer({ chartsData, className = '', onChartsRender, template }: ChartsContainerProps) {
   const chartRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [chartsRendered, setChartsRendered] = useState<number>(0);
+  const [allChartsNotified, setAllChartsNotified] = useState<boolean>(false);
 
   useEffect(() => {
     // Reset charts rendered count when chartsData changes
     setChartsRendered(0);
+    setAllChartsNotified(false);
     chartRefs.current = new Array(chartsData.length).fill(null);
   }, [chartsData]);
 
   useEffect(() => {
     // Only call onChartsRender when all charts have valid refs
-    if (onChartsRender && chartsRendered === chartsData.length && chartsData.length > 0) {
+    if (onChartsRender && chartsRendered === chartsData.length && chartsData.length > 0 && !allChartsNotified) {
       const validRefs = chartRefs.current.filter(ref => ref !== null);
+      console.log(`ChartsContainer: ${validRefs.length}/${chartsData.length} charts rendered`);
+      
       if (validRefs.length === chartsData.length) {
         console.log(`All ${chartsData.length} charts rendered, notifying parent component`);
+        setAllChartsNotified(true);
         // Add extra delay to ensure chart DOM is fully rendered
-        setTimeout(() => onChartsRender(chartRefs.current), 1500);
+        setTimeout(() => onChartsRender(chartRefs.current), 3000);
       }
     }
-  }, [chartsRendered, chartsData, onChartsRender]);
+  }, [chartsRendered, chartsData, onChartsRender, allChartsNotified]);
 
   const handleChartRender = (index: number) => (chartRef: HTMLDivElement | null) => {
-    chartRefs.current[index] = chartRef;
-    if (chartRef) {
+    // Only update if this chart hasn't been registered yet
+    if (chartRefs.current[index] === null && chartRef !== null) {
+      chartRefs.current[index] = chartRef;
       setChartsRendered(prev => {
         const newCount = prev + 1;
         console.log(`Chart ${index} rendered (${newCount}/${chartsData.length})`);
         return newCount;
       });
+    } else if (chartRef !== null) {
+      // Update the ref even if already set (in case of re-render)
+      chartRefs.current[index] = chartRef;
     }
   };
 
@@ -366,6 +424,7 @@ export function ChartsContainer({ chartsData, className = '', onChartsRender }: 
           key={`chart-${index}-${chartData.config.type}`}
           chartData={chartData}
           onChartRender={handleChartRender(index)}
+          template={template || undefined} // Properly pass template or undefined
         />
       ))}
     </div>
