@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -18,13 +19,35 @@ import {
   MousePointerClick,
   Calendar,
   Flashlight,
-  HelpCircle
+  HelpCircle,
+  Mail,
+  Linkedin
 } from "lucide-react";
+import XLogoIcon from "@/components/x-logo-icon";
+import Image from "next/image";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { FeedbackForm } from "@/components/feedback-form";
 import { trackPageView, trackUserEngagement } from "@/lib/analytics";
 import { Navbar } from "@/components/navbar";
 
 export default function LandingPage() {
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+
+  // Listen for feedback modal open event from navbar
+  useEffect(() => {
+      const handleOpenFeedback = () => setIsFeedbackOpen(true);
+
+      if (typeof window !== "undefined") {
+        window.addEventListener("openFeedbackModal", handleOpenFeedback);
+      }
+
+      return () => {
+        if (typeof window !== "undefined") {
+          window.removeEventListener("openFeedbackModal", handleOpenFeedback);
+        }
+      };
+    }, []);
 
   // Track landing page view
   trackPageView('Landing Page', {
@@ -123,7 +146,7 @@ export default function LandingPage() {
                   onClick={handleGetStarted}
                 >
                   <Rocket className="w-4 h-4" strokeWidth={1.5} />
-                  Start free
+                  Try it free
                 </Button>
               </Link>
               <Link href="/changelog">
@@ -136,26 +159,26 @@ export default function LandingPage() {
                 </Button>
               </Link>
             </div>
-            <div className="mt-6 text-xs text-slate-500">No credit card needed</div>
+            <div className="mt-6 text-xs text-slate-500">This is 100% free</div>
           </div>
 
           {/* Video Showcase */}
           <div id="showcase" className="mt-10 md:mt-14 w-full flex justify-center" style={{ perspective: "1200px" }}>
-            <div 
-              className="group w-[92vw] md:w-[90vw] max-w-6xl aspect-[16/9]  rounded-2xl  overflow-hidden relative will-change-transform transition-all duration-700 hover:shadow-md hover:scale-[1.01] [transform:translateZ(0)] md:[transform:translateZ(0)] md:group-hover:[transform:translateZ(0.001px)_rotateX(.6deg)_rotateY(.6deg)]"
-            >
-              <div className="absolute inset-0 w-full h-full overflow-hidden">
-  <iframe
-    title="Excel to PDF Converter Demo"
-    className="w-full h-[calc(100%+20px)] -translate-y-[20px]" 
-    src="https://www.youtube.com/embed/Af_qetmBLQs?autoplay=1&mute=1&loop=1&playlist=Af_qetmBLQs&controls=0&modestbranding=1&rel=0&showinfo=0&playsinline=1"
-    frameBorder="0"
-    allow="autoplay; fullscreen; encrypted-media"
-  />
+  <div 
+    className="w-[92vw] md:w-[90vw] max-w-6xl aspect-[16/9] rounded-2xl overflow-hidden relative shadow-[0_50px_120px_rgba(0,0,0,0.35)]"
+  >
+    <div className="absolute inset-0 w-full h-full overflow-hidden">
+      <iframe
+        title="Excel to PDF Converter Demo"
+        className="absolute inset-0 w-[120%] h-[120%] -left-[10%] -top-[10%] rounded-2xl"
+        src="https://www.youtube.com/embed/Af_qetmBLQs?autoplay=1&mute=1&loop=1&playlist=Af_qetmBLQs&controls=0&modestbranding=0&rel=0&showinfo=0&playsinline=1&jsapi=1&color=white"
+        frameBorder="0"
+        allow="autoplay; fullscreen; encrypted-media"
+      />
+    </div>
+  </div>
 </div>
 
-            </div>
-          </div>
 
           {/* Social Proof */}
           {/* <div className="max-w-6xl mx-auto mt-10 md:mt-12">
@@ -282,15 +305,16 @@ export default function LandingPage() {
                   onClick={handleGetStarted}
                 >
                   <MousePointerClick className="w-4 h-4" strokeWidth={1.5} />
-                  Get started free
+                  Try it Free
                 </Button>
               </Link>
               <Button 
                 variant="outline"
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md border border-slate-300 bg-white text-slate-800 text-sm font-medium hover:bg-slate-100 hover:border-slate-400 transition-colors"
+                onClick={() => setIsFeedbackOpen(true)}
               >
-                <Calendar className="w-4 h-4" strokeWidth={1.5} />
-                Book a demo
+                <Mail className="w-4 h-4" strokeWidth={1.5} />
+                Bug/Feedback Report
               </Button>
             </div>
           </div>
@@ -300,26 +324,61 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="py-10 border-t border-slate-200 bg-white">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-md bg-blue-600 text-white grid place-items-center tracking-tight text-sm font-semibold">
-                <FileSpreadsheet className="w-5 h-5" />
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="flex flex-col md:flex-row items-center gap-6">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-md text-white grid place-items-center tracking-tight text-sm font-semibold">
+                  <Image src="/logo.png" alt="Sheet2Report" width={75} height={75} />
+                </div>
+                <span className="text-slate-900 text-[15px] font-medium tracking-tight">
+                  Sheet2Report
+                </span>
               </div>
-              <span className="text-slate-900 text-[15px] font-medium tracking-tight">Sheet2Report</span>
+              <div className="text-sm text-slate-600">
+                © {new Date().getFullYear()} Sheet2Report. All rights reserved.
+              </div>
             </div>
-            <div className="text-sm text-slate-600">
-              © {new Date().getFullYear()} Sheet2Report All rights reserved.
-            </div>
-            <div className="flex items-center gap-3 text-sm text-slate-600">
-              <a href="#" className="hover:text-slate-900">Privacy</a>
-              <span className="text-slate-300">•</span>
-              <a href="#" className="hover:text-slate-900">Terms</a>
-              <span className="text-slate-300">•</span>
-              <a href="#" className="hover:text-slate-900">Contact</a>
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-4">
+                <a 
+                  href="https://www.linkedin.com/company/sheet2report" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-slate-600 hover:text-slate-900 transition-colors"
+                  aria-label="LinkedIn"
+                >
+                  <Linkedin className="w-5 h-5" />
+                </a>
+                <a 
+                  href="https://x.com/sheet2report" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-slate-600 hover:text-slate-900 transition-colors"
+                  aria-label="X (Twitter)"
+                >
+                  <XLogoIcon className="w-5 h-5 [&>path]:fill-current" />
+                </a>
+              </div>
+              <div className="flex items-center gap-4 text-sm text-slate-600">
+                <a href="#" className="hover:text-slate-900 transition-colors">Privacy</a>
+                <span className="text-slate-300">•</span>
+                <a href="#" className="hover:text-slate-900 transition-colors">Terms</a>
+                <span className="text-slate-300">•</span>
+                <a href="#" className="hover:text-slate-900 transition-colors">Contact</a>
+              </div>
             </div>
           </div>
         </div>
       </footer>
+      
+      <Dialog open={isFeedbackOpen} onOpenChange={setIsFeedbackOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Bug Report or Feedback</DialogTitle>
+          </DialogHeader>
+          <FeedbackForm onClose={() => setIsFeedbackOpen(false)} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

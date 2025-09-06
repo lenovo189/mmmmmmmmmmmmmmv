@@ -26,6 +26,11 @@ A Next.js-based application that transforms Excel files into comprehensive PDF r
 - **Template-Based Styling**: Select from 5 professional templates with unique color schemes
 - **Chart Customization**: Charts automatically styled to match selected template
 
+### User Feedback
+- **Bug Reporting**: Submit bug reports directly from the application
+- **Feature Requests**: Share feedback and suggestions for improvements
+- **Feedback Database**: All feedback stored in Supabase for easy access and management
+
 ## 🛠️ Technology Stack
 
 - **Frontend**: Next.js 15.5.0 with React 19.1.0
@@ -57,7 +62,15 @@ npm install
 Create a `.env.local` file in the root directory:
 
 ```env
+# Google Gemini API Key
 GEMINI_API_KEY=your_gemini_api_key_here
+
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Google Analytics (Optional)
+NEXT_PUBLIC_GA_MEASUREMENT_ID=your_ga_measurement_id
 ```
 
 ### 3. Development
@@ -165,6 +178,38 @@ The main component that handles:
 - Styling: Professional business report format
 - Sections: Executive summary, analysis, recommendations, data
 - **Templates**: 5 customizable templates with unique color schemes and styling
+
+### Supabase Feedback Database Setup
+To enable the bug/feedback reporting feature, you need to set up a Supabase project:
+
+1. **Create a Supabase Project**:
+   - Go to [Supabase](https://supabase.com/) and create a new project
+   - Note your Project URL and Anonymous Key from the project settings
+
+2. **Create the Feedback Table**:
+   Run this SQL in the Supabase SQL editor:
+   ```sql
+   CREATE TABLE feedback (
+     id SERIAL PRIMARY KEY,
+     name TEXT,
+     email TEXT,
+     feedback TEXT NOT NULL,
+     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+   );
+   ```
+
+3. **Configure Environment Variables**:
+   Add these to your `.env.local` file:
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+
+4. **Enable Row Level Security** (Optional but recommended):
+   ```sql
+   ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
+   CREATE POLICY "Feedback are insertable by everyone" ON feedback FOR INSERT WITH CHECK (true);
+   ```
 
 ## 🚨 Important Notes
 

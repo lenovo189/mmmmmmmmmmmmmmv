@@ -6,9 +6,27 @@ import ExcelPreviewWithReview from "@/components/excel-preview-with-review"
 import { FileSpreadsheet } from "lucide-react"
 import { trackPageView, trackUserEngagement, setUserProperties } from "@/lib/analytics"
 import { Navbar } from "@/components/navbar"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { FeedbackForm } from "@/components/feedback-form"
 
 export default function Converter() {
   const [file, setFile] = useState<File | null>(null)
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
+
+  // Listen for feedback modal open event from navbar
+  useEffect(() => {
+    const handleOpenFeedback = () => setIsFeedbackOpen(true);
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("openFeedbackModal", handleOpenFeedback);
+    }
+
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("openFeedbackModal", handleOpenFeedback);
+      }
+    };
+  }, []);
 
   // Track page view on component mount
   useEffect(() => {
@@ -109,6 +127,15 @@ export default function Converter() {
           </div>
         )}
       </div>
+      
+      <Dialog open={isFeedbackOpen} onOpenChange={setIsFeedbackOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Bug Report or Feedback</DialogTitle>
+          </DialogHeader>
+          <FeedbackForm onClose={() => setIsFeedbackOpen(false)} />
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

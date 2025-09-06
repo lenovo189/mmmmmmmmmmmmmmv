@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Linkedin } from "lucide-react";
+import XLogoIcon from "@/components/x-logo-icon";
 import { trackPageView } from "@/lib/analytics";
 import { Navbar } from "@/components/navbar";
+import Image from "next/image";
 
 // Changelog data - this would typically come from a data source
 const changelogData = [
@@ -147,10 +149,44 @@ export default function ChangelogPage() {
       </main>
 
       {/* Footer */}
-      <footer className="py-8 border-t border-slate-200 bg-white mt-12">
+      <footer className="py-10 border-t border-slate-200 bg-white mt-12">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center text-sm text-slate-600">
-            © {new Date().getFullYear()} Sheet2Report. All rights reserved.
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="flex flex-col md:flex-row items-center gap-6">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-md text-white grid place-items-center tracking-tight text-sm font-semibold">
+                  <Image src="/logo.png" alt="Sheet2Report" width={75} height={75} />
+                </div>
+                <span className="text-slate-900 text-[15px] font-medium tracking-tight">
+                  Sheet2Report
+                </span>
+              </div>
+              <div className="text-sm text-slate-600">
+                © {new Date().getFullYear()} Sheet2Report. All rights reserved.
+              </div>
+            </div>
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-4">
+                <a 
+                  href="https://www.linkedin.com/company/sheet2report" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-slate-600 hover:text-slate-900 transition-colors"
+                  aria-label="LinkedIn"
+                >
+                  <Linkedin className="w-5 h-5" />
+                </a>
+                <a 
+                  href="https://x.com/sheet2report" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-slate-600 hover:text-slate-900 transition-colors"
+                  aria-label="X (Twitter)"
+                >
+                  <XLogoIcon className="w-5 h-5 [&>path]:fill-current" />
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </footer>

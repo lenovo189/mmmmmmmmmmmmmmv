@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { FileSpreadsheet, LogIn, Flashlight } from "lucide-react";
+import { FileSpreadsheet, LogIn, Flashlight, Mail, MousePointerClick } from "lucide-react";
 import { trackUserEngagement } from "@/lib/analytics";
 import Image from "next/image";
 
@@ -21,9 +21,10 @@ export function Navbar() {
           <div className="h-10 w-10 rounded-md text-white grid place-items-center tracking-tight text-sm font-semibold">
             <Image src="/logo.png" alt="Excel to PDF" width={75} height={75} />
           </div>
+          <Link href="/">
           <span className="text-slate-900 text-[15px] font-medium tracking-tight">
             Sheet2Report
-          </span>
+          </span> </Link>
         </div>
         <nav className="hidden md:flex items-center gap-7 text-sm text-slate-600">
           <Link href="/#features" className="hover:text-slate-900 transition-colors">
@@ -40,20 +41,25 @@ export function Navbar() {
           </Link>
         </nav>
         <div className="flex items-center gap-3">
-          {/* <Button
+          <Button
             variant="outline"
             className="hidden sm:inline-flex items-center gap-2 px-3.5 py-2 rounded-md border border-slate-300 bg-white text-slate-800 text-sm font-medium hover:bg-slate-100 hover:border-slate-400 transition-colors"
+            onClick={() => {
+              // We'll need to pass this through to the parent component
+              const event = new CustomEvent('openFeedbackModal');
+              window.dispatchEvent(event);
+            }}
           >
-            <LogIn className="w-4 h-4" strokeWidth={1.5} />
-            Sign in
-          </Button> */}
+            <Mail className="w-4 h-4" strokeWidth={1.5} />
+            Feedback
+          </Button>
           <Link href="/converter">
             <Button
               className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors"
               onClick={handleGetStarted}
             >
-              <Flashlight className="w-4 h-4" strokeWidth={1.5} />
-              Get started
+              <MousePointerClick className="w-4 h-4" strokeWidth={1.5} />
+              Try it Free
             </Button>
           </Link>
         </div>
